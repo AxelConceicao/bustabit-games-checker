@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bustabit Checker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
+</head>
+
+<body>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Bustabit v2 - Game Verification Script</h1>
+            <h2 class="subtitle">
+                Third party script used to verify games on Bustabit v2. --
+                <small><a href="https://bitcointalk.org/index.php?topic=2807542.0" target="_blank">Seeding event</a> |
+                    <a href="https://bustabit.com/" target="_blank">Bustabit v2</a> | <a
+                        href="https://bustabit.com/license.txt" target="_blank">Licensed sites</a></small>
+            </h2>
+        </div>
+        <hr>
+        <div class="container">
+            <div class="field">
+                <p class="control has-icons-left">
+                    <input class="input" type="text" id="game_hash_input" placeholder="Game's hash (SHA256)">
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-key"></i>
+                        }
+                    </span>
+                </p>
+            </div>
+            <div class="field">
+                <p class="control has-icons-left">
+                    <input class="input" type="number" id="game_amount_input" min="1" max="100000" step="1"
+                        placeholder="Amount of games" value="10">
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-hashtag"></i>
+                    </span>
+                </p>
+            </div>
+            <label class="field checkbox">
+                <input type="checkbox" name="preview">
+                Show preview
+            </label>
+            <div class="field is-grouped">
+                <p class="control">
+                    <a class="button is-primary" id="game_verify_submit">
+                        Generate & Download
+                    </a>
+                </p>
+            </div>
+            <h6 class="subtitle is-6">
+                <span class="status"></span>
+            </h6>
+        </div>
+        <hr>
+        <div class="container">
+            <table class="table is-striped is-fullwidth is-hoverable is-narrow">
+                <thead>
+                    <tr>
+                        <th><b>Game's hash</b></th>
+                        <th><b>Bust</b></th>
+                    </tr>
+                </thead>
+                <tbody id="game_verify_table"></tbody>
+            </table>
+        </div>
+    </section>
+    <script type="text/javascript">//<![CDATA[
+
+        function saveStaticDataToFile(tab) {
+            var blob = new Blob([tab],
+                { type: "text/plain;charset=utf-8" });
+            saveAs(blob, "output.txt");
+        }
+
+        var isVerifying = false;
+        $('#game_verify_submit').on('click', () => {
+            mytable = ""
+            if (isVerifying) return;
+            isVerifying = true;
+            $('#game_hash_input').parent().addClass('is-loading');
+            $('#game_verify_submit').addClass('is-loading');
+            $('#game_hash_input, #game_amount_input, #game_verify_submit').attr('disabled', 'disabled');
+            $('#game_verify_table').html('');
+
+            var mytable = ""
+            let prevHash = null;
+            for (let i = 0; i < $('#game_amount_input').val(); i++) {
+                let hash = String(prevHash ? CryptoJS.SHA256(String(prevHash)) : $('#game_hash_input').val());
+                let bust = gameResult(CryptoJS.enc.Hex.parse(hash), '0000000000000000004d6ec16dafe9d8370958664c1dc422f452892264c59526');
+
+                setTimeout(function () {
+                    if ($('input[name=preview]').is(':checked')) {
+                        addTableRow(hash, bust, i);
+                    }
+                    mytable += ($('#game_amount_input').val() - i) + ":" + hash + ":" + bust + "\n"
+                    $('.status').text((i + 1) + "/" + $('#game_amount_input').val())
+                    if (i >= $('#game_amount_input').val() - 1) {
+                        $('#game_hash_input').parent().removeClass('is-loading');
+                        $('#game_verify_submit').removeClass('is-loading');
+                        $('#game_hash_input, #game_amount_input, #game_verify_submit').removeAttr("disabled");
+                        isVerifying = false;
+                        saveStaticDataToFile(mytable)
+                        mytable = ""
+                    }
+                }, i * 1);
+
+                prevHash = hash;
+            }
+        });
+        
+        $('#game_amount_input').on('keyup', () => {
+            if ($('#game_amount_input').val() >= 10000) {
+                if ($('#game_verify_warning').length) return;
+                $('#game_verify_submit').parent().append(
+                    $('<span/>').attr({
+                        'id': 'game_verify_warning',
+                        'class': 'tag is-warning'
+                    }).text("Verifying a huge amount of games may consume more ressources from your CPU")
+                );
+            } else {
+                if ($('#game_verify_warning').length) {
+                    $('#game_verify_warning').remove();
+                }
+            }
+        });
+
+        const addTableRow = (hash, bust, index) => {
+            $('<tr/>').attr({
+                'class': index === 0 ? 'is-first' : null
+            }).append(
+                $('<td/>').text(hash)
+            ).append(
+                $('<td/>').text(bust).attr({
+                    'class': bust === 1.98 ? 'is-at-median' : bust > 1.98 ? 'is-over-median' : 'is-under-median'
+                })
+            ).appendToWithIndex($('#game_verify_table'), index);
+
+            if (index >= $('#game_amount_input').val() - 1) {
+                $('#game_hash_input').parent().removeClass('is-loading');
+                $('#game_verify_submit').removeClass('is-loading');
+                $('#game_hash_input, #game_amount_input, #game_verify_submit').removeAttr("disabled");
+                isVerifying = false;
+            }
+        };
+
+        /**
+          * @desc Calculates the game result from its hash
+          * @param binary seed - Hash of the game. Ex.: Buffer.from(seed)
+          * @param string salt - Client seed; A bitcoin block hash
+          * @return number
+        */
+        const gameResult = (seed, salt) => {
+            const nBits = 52; // number of most significant bits to use
+
+            // 1. HMAC_SHA256(message=seed, key=salt)  
+            const hmac = CryptoJS.HmacSHA256(seed, salt);
+            seed = hmac.toString(CryptoJS.enc.Hex);
+
+            // 2. r = 52 most significant bits
+            seed = seed.slice(0, nBits / 4);
+            const r = parseInt(seed, 16);
+
+            // 3. X = r / 2^52
+            let X = r / Math.pow(2, nBits); // uniformly distributed in [0; 1)
+
+            // 4. X = 99 / (1-X)
+            X = 99 / (1 - X);
+
+            // 5. return max(trunc(X), 100)
+            const result = Math.floor(X);
+            return Math.max(1, result / 100);
+        };
+
+        $.fn.appendToWithIndex = function (to, index) {
+            if (!to instanceof jQuery) {
+                to = $(to);
+            }
+            if (index === 0) {
+                $(this).prependTo(to);
+            } else {
+                $(this).insertAfter(to.children().eq(index - 1));
+            }
+        };
+
+
+
+          //]]></script>
+</body>
+
+</html>

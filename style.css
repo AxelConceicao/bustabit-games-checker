@@ -1,0 +1,29 @@
+table {
+    table-layout: fixed;
+  }
+  
+  table thead tr th:first-child {
+    width: 80%;
+  }
+  
+  table tbody tr td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .is-first {
+    background-color: rgba(195, 111, 24, 0.2);
+  }
+  
+  .is-over-median {
+    color: #44B39D;
+  }
+  
+  .is-at-median {
+    color: #3B3C3D;
+  }
+  
+  .is-under-median {
+    color: #BF4A67;
+  }
+  
